@@ -21,24 +21,24 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // استخراج امتداد الملف الأصلي (مثل png أو jpg)
+    // استخراج امتداد الملف وتوليد اسم إنجليزي آمن وخالٍ من الحروف العربية والمسافات
     const originalName = file.name || "image.png";
     const fileExtension = originalName.split('.').pop() || 'png';
-
-    // توليد اسم إنجليزي آمن وخالٍ من الحروف العربية لتجنب أخطاء التخزين
     const fileName = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExtension}`;
 
-    const { error } = await supabase.storage
+    // الرفع المباشر إلى Supabase Storage فقط
+    const { error: uploadError } = await supabase.storage
       .from("uploads")
       .upload(fileName, buffer, {
         contentType: file.type,
         upsert: true,
       });
 
-    if (error) {
-      throw error;
+    if (uploadError) {
+      throw uploadError;
     }
 
+    // الحصول على الرابط العام للصورة
     const { data } = supabase.storage
       .from("uploads")
       .getPublicUrl(fileName);
@@ -48,11 +48,10 @@ export async function POST(request: Request) {
       name: file.name,
       type: file.type,
     });
-  } catch (err) {
-    console.error(err);
-
+  } catch (err: any) {
+    console.error("Error uploading file:", err);
     return NextResponse.json(
-      { error: "Upload failed" },
+      { error: err.message || "Upload failed" },
       { status: 500 }
     );
   }
