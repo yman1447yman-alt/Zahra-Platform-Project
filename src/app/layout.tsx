@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     address: false,
   },
   verification: {
-    google: "google04e9f285795cf5b8",
+    google: "EclzTdjlnSWd0jOQJ1xkqyzIInkUk07eqfSDh6ieCd0",
   },
   openGraph: {
     title: "منصة الزهراء للخدمات التعليمية والحلول الذكية | التميز والأناقة الأكاديمية",
