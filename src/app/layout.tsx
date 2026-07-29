@@ -18,7 +18,7 @@ const tajawal = Tajawal({
 });
 
 export const metadata: Metadata = {
- metadataBase: new URL("https://zahra-platform-project.vercel.app"),
+  metadataBase: new URL("https://zahra-platform-project.vercel.app"),
   title: "منصة الزهراء للخدمات التعليمية والحلول الذكية | كل ما تحتاجه في مكان واحد",
   description: "منصة الزهراء تقدم حلولاً احترافية للمعلمين والمعلمات والطلاب والمؤسسات التعليمية: خطط تشغيلية، ملفات إنجاز، حقائب نافس، تصميم بوربوينت، وسجلات المتابعة والتقويم المدرسي بجودة فائقة وتسليم سريع.",
   keywords: [
@@ -41,6 +41,9 @@ export const metadata: Metadata = {
     telephone: true,
     email: true,
     address: false,
+  },
+  verification: {
+    google: "google04e9f285795cf5b8",
   },
   openGraph: {
     title: "منصة الزهراء للخدمات التعليمية والحلول الذكية | التميز والأناقة الأكاديمية",
