@@ -21,7 +21,12 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    // استخراج امتداد الملف الأصلي (مثل png أو jpg)
+    const originalName = file.name || "image.png";
+    const fileExtension = originalName.split('.').pop() || 'png';
+
+    // توليد اسم إنجليزي آمن وخالٍ من الحروف العربية لتجنب أخطاء التخزين
+    const fileName = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExtension}`;
 
     const { error } = await supabase.storage
       .from("uploads")
