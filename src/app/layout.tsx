@@ -117,6 +117,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ar" dir="rtl" className={`scroll-smooth ${cairo.variable} ${tajawal.variable}`}>
       <head>
+        <meta name="google-site-verification" content="EclzTdjlnSWd0jOQJ1xkqyzIInkUk07eqfSDh6ieCd0" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -127,4 +128,3 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </body>
     </html>
   );
-}
