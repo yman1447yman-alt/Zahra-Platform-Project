@@ -72,11 +72,15 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [pdfUrl, setPdfUrl] = useState("");
 
-  const safeCategories = Array.isArray(categories) && categories.length > 0 ? categories : defaultCategoriesList;
+  // الدمج الإجباري لضمان عدم ظهور القائمة فارغة نهائياً تحت أي ظرف
+  const safeCategories = (Array.isArray(categories) && categories.length > 0) 
+    ? categories 
+    : defaultCategoriesList;
+    
   const safeWorks = Array.isArray(works) ? works : [];
 
   useEffect(() => {
-    if (safeCategories.length > 0 && !categoryId) {
+    if (safeCategories.length > 0 && (!categoryId || !safeCategories.some(c => String(c.id) === String(categoryId)))) {
       setCategoryId(String(safeCategories[0].id));
     }
   }, [safeCategories, categoryId]);
