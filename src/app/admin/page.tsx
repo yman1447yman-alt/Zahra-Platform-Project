@@ -1,361 +1,289 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { 
-  ShieldCheck, 
-  Lock, 
-  LogOut, 
-  Home, 
-  FileText, 
-  FolderOpen, 
-  Award, 
-  Settings, 
-  Loader2, 
-  Sparkles, 
-  TrendingUp, 
-  Users, 
-  CheckCircle2 
-} from "lucide-react";
+import React, { useState } from "react";
+import { Plus, Trash2, Edit, Save, X, FileText, Upload, Sparkles } from "lucide-react";
+import { predefinedTemplates } from "@/data/formTemplates";
 
-import AdminOverview from "@/components/admin/AdminOverview";
-import AdminWorksManager from "@/components/admin/AdminWorksManager";
-import AdminCategoriesManager from "@/components/admin/AdminCategoriesManager";
-import AdminServicesManager from "@/components/admin/AdminServicesManager";
-import AdminSettingsAndMore from "@/components/admin/AdminSettingsAndMore";
+interface AdminWorksManagerProps {
+  works: any[];
+  categories: any[];
+  onRefresh: () => void;
+}
 
-export default function AdminPage() {
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [platformData, setPlatformData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<string>("overview");
+export default function AdminWorksManager({ works, categories, onRefresh }: AdminWorksManagerProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Login form state
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
-  const [loginError, setLoginError] = useState("");
-  const [loginLoading, setLoginLoading] = useState(false);
+  // Form states
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState(categories[0]?.name || "ملفات الإنجاز");
+  const [description, setDescription] = useState("");
+  const [features, setFeatures] = useState("");
+  const [price, setPrice] = useState("95 ريال");
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch("/api/data");
-      if (res.ok) {
-        const data = await res.json();
-        setPlatformData(data);
-      }
-    } catch (e) {
-      console.error("Error fetching platform data:", e);
+  // دالة التعبئة التلقائية الذكية عند تغيير التصنيف
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedCategory = e.target.value;
+    setCategory(selectedCategory);
+
+    // جلب القالب الافتراضي المرتبط بالتصنيف إذا وجد
+    const template = predefinedTemplates[selectedCategory];
+    if (template) {
+      setTitle(template.defaultTitle);
+      setDescription(template.defaultDescription);
+      setFeatures(template.defaultFeatures);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    const checkAuthAndLoad = async () => {
-      try {
-        const sessionRes = await fetch("/api/auth/session");
-        const sessionData = await sessionRes.json();
-        setAuthenticated(sessionData.authenticated);
-        
-        await fetchData();
-      } catch (e) {
-        setAuthenticated(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkAuthAndLoad();
-  }, [fetchData]);
+  const handleResetForm = () => {
+    setTitle("");
+    setDescription("");
+    setFeatures("");
+    setPrice("95 ريال");
+    setPdfUrl("");
+    setImageUrl("");
+    setIsAdding(false);
+    setEditingId(null);
+  };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSaveWork = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginLoading(true);
-    setLoginError("");
+    setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      const result = await res.json();
+      const endpoint = editingId ? `/api/works/${editingId}` : "/api/works";
+      const method = editingId ? "PUT" : "POST";
 
-      if (result.success) {
-        setAuthenticated(true);
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          category,
+          description,
+          features,
+          price,
+          pdfUrl,
+          imageUrl,
+        }),
+      });
+
+      if (res.ok) {
+        onRefresh();
+        handleResetForm();
       } else {
-        setLoginError(result.error || "بيانات الدخول غير صحيحة.");
+        alert("حدث خطأ أثناء حفظ العمل.");
       }
-    } catch {
-      setLoginError("حدث خطأ أثناء محاولة تسجيل الدخول.");
+    } catch (err) {
+      console.error(err);
+      alert("حدث خطأ غير متوقع.");
     } finally {
-      setLoginLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setAuthenticated(false);
+  const handleDeleteWork = async (id: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا النموذج؟")) return;
+
+    try {
+      const res = await fetch(`/api/works/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        onRefresh();
+      } else {
+        alert("فشل حذف النموذج.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FC] flex flex-col items-center justify-center text-[#1F2937] gap-4 font-['Cairo']">
-        <Loader2 className="w-10 h-10 animate-spin text-[#6C63FF]" />
-        <span className="font-bold text-base">جاري الاتصال بمركز التحكم الآمن لمنصة الزهراء...</span>
+  const handleStartEdit = (work: any) => {
+    setEditingId(work.id);
+    setTitle(work.title || "");
+    setCategory(work.category || categories[0]?.name);
+    setDescription(work.description || "");
+    setFeatures(work.features || "");
+    setPrice(work.price || "95 ريال");
+    setPdfUrl(work.pdfUrl || "");
+    setImageUrl(work.imageUrl || "");
+    setIsAdding(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-[#E5E7EB] shadow-xs">
+        <div>
+          <h2 className="text-xl font-black text-[#1F2937]">معرض الأعمال والترويج (النماذج)</h2>
+          <p className="text-xs text-[#6B7280] font-['Tajawal'] mt-1">
+            أضف ونظم ملفات وقوالب منصة الزهراء التعليمية بكل سهولة.
+          </p>
+        </div>
+        {!isAdding && (
+          <button
+            onClick={() => {
+              handleResetForm();
+              // تطبيق القالب الافتراضي مباشرة عند الفتح لأول تصنيف
+              const defaultCat = categories[0]?.name || "ملفات الإنجاز";
+              setCategory(defaultCat);
+              if (predefinedTemplates[defaultCat]) {
+                setTitle(predefinedTemplates[defaultCat].defaultTitle);
+                setDescription(predefinedTemplates[defaultCat].defaultDescription);
+                setFeatures(predefinedTemplates[defaultCat].defaultFeatures);
+              }
+              setIsAdding(true);
+            }}
+            className="px-5 py-3 rounded-2xl bg-[#6C63FF] hover:bg-[#5b52e6] text-white font-extrabold text-xs flex items-center gap-2 shadow-md shadow-[#6C63FF]/25 transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>إضافة نموذج جديد</span>
+          </button>
+        )}
       </div>
-    );
-  }
 
-  // Render Login Screen if Not Authenticated
-  if (!authenticated) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FC] flex items-center justify-center p-4 sm:p-6 text-[#1F2937] relative overflow-hidden font-['Cairo']">
-        <div className="absolute top-1/3 right-1/4 w-[450px] h-[450px] bg-[#6C63FF]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 left-1/4 w-[450px] h-[450px] bg-[#8B7BFF]/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="w-full max-w-md bg-white rounded-3xl border border-[#E5E7EB] shadow-2xl p-8 sm:p-10 z-10 space-y-8">
-          <div className="text-center space-y-3">
-            <div className="w-14 h-14 bg-gradient-to-tr from-[#6C63FF] to-[#8B7BFF] rounded-2xl mx-auto flex items-center justify-center text-white shadow-md shadow-[#6C63FF]/25">
-              <Lock className="w-7 h-7" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#1F2937]">
-              دخول الإدارة المنصة
-            </h1>
-            <p className="text-xs sm:text-sm text-[#6B7280] font-['Tajawal'] font-medium">
-              منصة الزهراء للخدمات التعليمية والحلول الذكية
-            </p>
+      {/* نموذج الإضافة والتعديل */}
+      {isAdding && (
+        <form onSubmit={handleSaveWork} className="bg-white p-6 sm:p-8 rounded-3xl border border-[#6C63FF]/30 shadow-xl space-y-6">
+          <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-4">
+            <h3 className="text-lg font-black text-[#1F2937] flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[#6C63FF]" />
+              <span>{editingId ? "تعديل نموذج" : "إضافة نموذج ذكي جديد"}</span>
+            </h3>
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="p-2 rounded-xl text-[#6B7280] hover:bg-rose-50 hover:text-rose-600 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          {loginError && (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold text-center">
-              {loginError}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* اختيار التصنيف (مع التعبئة التلقائية الفورية) */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-[#1F2937]">اسم المستخدم (المشرف)</label>
+              <label className="block text-xs font-bold text-[#1F2937]">تصنيف النموذج (القسم التعليمي) *</label>
+              <select
+                value={category}
+                onChange={handleCategoryChange}
+                className="w-full px-4 py-3 bg-[#F8F9FC] border border-[#E5E7EB] rounded-2xl text-[#1F2937] font-bold focus:outline-none focus:border-[#6C63FF] transition"
+              >
+                {categories.map((cat: any) => (
+                  <option key={cat.id || cat.name} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <span className="text-[10px] text-[#6C63FF] font-medium block">
+                ⚡ بمجرد اختيار التصنيف، سيتم تعبئة البيانات الوصفية والبنود تلقائياً!
+              </span>
+            </div>
+
+            {/* السعر */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#1F2937]">سعر النموذج أو طريقة العرض *</label>
               <input
                 type="text"
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
                 className="w-full px-4 py-3 bg-[#F8F9FC] border border-[#E5E7EB] rounded-2xl text-[#1F2937] font-bold focus:outline-none focus:border-[#6C63FF] transition"
-                placeholder="admin"
+                placeholder="95 ريال"
               />
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-[#1F2937]">كلمة المرور</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-[#F8F9FC] border border-[#E5E7EB] rounded-2xl text-[#1F2937] font-bold focus:outline-none focus:border-[#6C63FF] transition"
-                placeholder="••••••••"
-              />
-            </div>
+          {/* عنوان النموذج */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-[#1F2937]">عنوان النموذج *</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-4 py-3 bg-[#F8F9FC] border border-[#E5E7EB] rounded-2xl text-[#1F2937] font-bold focus:outline-none focus:border-[#6C63FF] transition"
+              placeholder="مثال: حقيبة شواهد وتقييم التقويم الخارجي والداخلي"
+            />
+          </div>
 
+          {/* الوصف والبنود */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-[#1F2937]">وصف النموذج والمميزات والبنود *</label>
+            <textarea
+              rows={4}
+              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-3 bg-[#F8F9FC] border border-[#E5E7EB] rounded-2xl text-[#1F2937] font-medium focus:outline-none focus:border-[#6C63FF] transition text-xs leading-relaxed"
+              placeholder="اكتب نبذة عن الملف وما يحتويه..."
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E5E7EB]">
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-[#1F2937] font-bold text-xs transition"
+            >
+              إلغاء
+            </button>
             <button
               type="submit"
-              disabled={loginLoading}
-              className="w-full py-4 rounded-2xl bg-[#6C63FF] hover:bg-[#5b52e6] text-white font-extrabold text-base shadow-lg shadow-[#6C63FF]/30 flex items-center justify-center gap-2.5 transition transform hover:-translate-y-0.5 active:translate-y-0"
+              disabled={loading}
+              className="px-6 py-3 rounded-2xl bg-[#6C63FF] hover:bg-[#5b52e6] text-white font-extrabold text-xs shadow-md shadow-[#6C63FF]/25 flex items-center gap-2 transition"
             >
-              {loginLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-              <span>تسجيل الدخول وبدء الإدارة</span>
+              <Save className="w-4 h-4" />
+              <span>{loading ? "جاري الحفظ..." : "حفظ النشر بالمنصة"}</span>
             </button>
-          </form>
-
-          <div className="p-4 rounded-2xl bg-[#F8F9FC] border border-[#E5E7EB] text-xs text-[#6B7280] space-y-1 text-center font-['Tajawal']">
-            <span className="font-bold block text-[#6C63FF]">💡 بيانات الدخول السلسة المجهزة لك:</span>
-            <span>اسم المستخدم: <strong className="text-[#1F2937]">admin</strong> | كلمة المرور: <strong className="text-[#1F2937]">admin123</strong></span>
           </div>
+        </form>
+      )}
 
-          <div className="pt-2 text-center border-t border-[#E5E7EB]/80">
-            <Link href="/" className="text-xs font-bold text-[#6B7280] hover:text-[#6C63FF] transition inline-flex items-center gap-1.5">
-              <span>→ العودة إلى واجهة الموقع الرئيسي</span>
-            </Link>
-          </div>
+      {/* قائمة النماذج الحالية */}
+      <div className="bg-white rounded-3xl border border-[#E5E7EB] overflow-hidden shadow-xs">
+        <div className="p-5 border-b border-[#E5E7EB] bg-[#F8F9FC] font-black text-xs text-[#6B7280]">
+          إجمالي النماذج النشطة ({works.length})
+        </div>
+        <div className="divide-y divide-[#E5E7EB]">
+          {works.length === 0 ? (
+            <div className="p-12 text-center text-xs text-[#6B7280] font-['Tajawal']">
+              لا توجد نماذج مضافة حتى الآن. اضغط على "إضافة نموذج جديد" للبدء.
+            </div>
+          ) : (
+            works.map((work: any) => (
+              <div key={work.id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-[#F8F9FC]/60 transition">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-[#6C63FF]/10 text-[#6C63FF] px-2.5 py-0.5 rounded-full font-black">
+                      {work.category}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-emerald-600">{work.price}</span>
+                  </div>
+                  <h4 className="text-sm font-black text-[#1F2937]">{work.title}</h4>
+                  <p className="text-xs text-[#6B7280] line-clamp-1 font-['Tajawal']">{work.description}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleStartEdit(work)}
+                    className="p-2.5 rounded-xl bg-slate-100 hover:bg-[#6C63FF] hover:text-white text-[#1F2937] transition"
+                    title="تعديل"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteWork(work.id)}
+                    className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 transition"
+                    title="حذف"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F8F9FC] text-[#1F2937] flex flex-col font-['Cairo']">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-2xs border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[#6C63FF] flex items-center justify-center text-white font-extrabold shadow-sm shadow-[#6C63FF]/20">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-lg sm:text-xl font-extrabold tracking-tight text-[#1F2937] flex items-center gap-2">
-                <span>لوحة التحكم الإدارية</span>
-                <span className="text-[11px] bg-[#22C55E]/15 text-[#22C55E] px-2.5 py-0.5 rounded-full font-black">الزهراء PRO</span>
-              </span>
-              <span className="block text-xs text-[#6B7280] font-medium font-['Tajawal']">
-                إدارة كاملة بدون كود في أقل من دقيقة
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2.5 rounded-xl bg-[#F8F9FC] hover:bg-slate-200 text-[#1F2937] font-bold text-xs flex items-center gap-2 border border-[#E5E7EB] transition shadow-2xs"
-            >
-              <Home className="w-4 h-4 text-[#6C63FF]" />
-              <span className="hidden sm:inline">عرض الموقع الحي 🌐</span>
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 flex items-center gap-1.5 transition"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>خروج</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col md:flex-row gap-8">
-        {/* Navigation Sidebar */}
-        <aside className="w-full md:w-64 shrink-0 space-y-4">
-          <div className="bg-white rounded-3xl p-3.5 border border-[#E5E7EB] shadow-sm space-y-1.5">
-            <div className="px-4 py-2.5 text-[11px] font-black text-[#6B7280] uppercase tracking-wider">
-              أقسام المنصة الإدارية
-            </div>
-
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`w-full px-4 py-3.5 rounded-2xl font-extrabold text-sm flex items-center gap-3 transition text-right ${
-                activeTab === "overview" 
-                  ? "bg-[#6C63FF] text-white shadow-md shadow-[#6C63FF]/25" 
-                  : "text-[#1F2937] hover:bg-[#F8F9FC]"
-              }`}
-            >
-              <TrendingUp className="w-5 h-5" />
-              <span>نظرة عامة وإحصاءات</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("works")}
-              className={`w-full px-4 py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-between transition text-right ${
-                activeTab === "works" 
-                  ? "bg-[#6C63FF] text-white shadow-md shadow-[#6C63FF]/25" 
-                  : "text-[#1F2937] hover:bg-[#F8F9FC]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5" />
-                <span>معرض الأعمال (النماذج)</span>
-              </div>
-              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-black ${activeTab === "works" ? "bg-white/20 text-white" : "bg-[#F8F9FC] text-[#6C63FF]"}`}>
-                {platformData?.works?.length || 0}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("categories")}
-              className={`w-full px-4 py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-between transition text-right ${
-                activeTab === "categories" 
-                  ? "bg-[#6C63FF] text-white shadow-md shadow-[#6C63FF]/25" 
-                  : "text-[#1F2937] hover:bg-[#F8F9FC]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <FolderOpen className="w-5 h-5" />
-                <span>إدارة التصنيفات</span>
-              </div>
-              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-black ${activeTab === "categories" ? "bg-white/20 text-white" : "bg-[#F8F9FC] text-[#8B7BFF]"}`}>
-                {platformData?.categories?.length || 0}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("services")}
-              className={`w-full px-4 py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-between transition text-right ${
-                activeTab === "services" 
-                  ? "bg-[#6C63FF] text-white shadow-md shadow-[#6C63FF]/25" 
-                  : "text-[#1F2937] hover:bg-[#F8F9FC]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Award className="w-5 h-5" />
-                <span>إدارة الخدمات (23 خدمة)</span>
-              </div>
-              <span className={`text-[11px] px-2 py-0.5 rounded-full font-mono font-black ${activeTab === "services" ? "bg-white/20 text-white" : "bg-[#F8F9FC] text-[#22C55E]"}`}>
-                {platformData?.services?.length || 0}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("settings")}
-              className={`w-full px-4 py-3.5 rounded-2xl font-extrabold text-sm flex items-center gap-3 transition text-right ${
-                activeTab === "settings" 
-                  ? "bg-[#6C63FF] text-white shadow-md shadow-[#6C63FF]/25" 
-                  : "text-[#1F2937] hover:bg-[#F8F9FC]"
-              }`}
-            >
-              <Settings className="w-5 h-5" />
-              <span>رقم الواتساب وإعدادات النصوص</span>
-            </button>
-          </div>
-
-          {/* Quick Help Card */}
-          <div className="bg-[#6C63FF]/10 text-[#1F2937] rounded-3xl p-6 border border-[#6C63FF]/25 shadow-2xs space-y-3 font-['Tajawal']">
-            <span className="text-xs font-black text-[#6C63FF] font-['Cairo'] flex items-center gap-1.5 uppercase tracking-wide">
-              <CheckCircle2 className="w-4 h-4 text-[#6C63FF]" />
-              سهولة فائقة دون كود
-            </span>
-            <p className="text-xs text-[#1F2937] leading-relaxed font-medium">
-              أضف أي عمل جديد وسوف يدرج تلقائياً داخل قاعدة بيانات PostgreSQL ويظهر بصفحة الهبوط بلمسة زر واحدة في أقل من 60 ثانية.
-            </p>
-          </div>
-        </aside>
-
-        {/* Content Area */}
-        <main className="flex-1 min-w-0">
-          {activeTab === "overview" && (
-            <AdminOverview data={platformData} onSelectTab={(tab) => setActiveTab(tab)} />
-          )}
-          {activeTab === "works" && (
-            <AdminWorksManager
-              works={platformData?.works || []}
-              categories={platformData?.categories || []}
-              onRefresh={fetchData}
-            />
-          )}
-          {activeTab === "categories" && (
-            <AdminCategoriesManager
-              categories={platformData?.categories || []}
-              onRefresh={fetchData}
-            />
-          )}
-          {activeTab === "services" && (
-            <AdminServicesManager
-              services={platformData?.services || []}
-              onRefresh={fetchData}
-            />
-          )}
-          {activeTab === "settings" && (
-            <AdminSettingsAndMore
-              settings={platformData?.settings || {}}
-              testimonials={platformData?.testimonials || []}
-              faqs={platformData?.faqs || []}
-              onRefresh={fetchData}
-            />
-          )}
-        </main>
-      </div>
-
-      <footer className="py-6 text-center text-xs text-[#6B7280] border-t border-[#E5E7EB] mt-auto bg-white font-['Tajawal']">
-        تم تطوير نظام إدارة **منصة الزهراء للخدمات التعليمية والحلول الذكية** باحترافية كاملة. © 2026 جميع الحقوق محفوظة.
-      </footer>
     </div>
   );
 }
