@@ -53,6 +53,8 @@ const predefinedTemplates: Record<string, { defaultTitle: string; defaultDescrip
   }
 };
 
+const safePlaceholderImage = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60";
+
 export default function AdminWorksManager({ works = [], categories = [], onRefresh }: AdminWorksManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingWork, setEditingWork] = useState<any>(null);
@@ -66,7 +68,7 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [price, setPrice] = useState("95 ريال");
-  const [coverImage, setCoverImage] = useState("/images/portfolio-cover-1.jpg");
+  const [coverImage, setCoverImage] = useState(safePlaceholderImage);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [pdfUrl, setPdfUrl] = useState("");
 
@@ -87,8 +89,8 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
     
     setCategoryId(catId);
     setPrice("95 ريال");
-    setCoverImage("/images/portfolio-cover-1.jpg");
-    setGalleryImages(["/images/portfolio-cover-1.jpg"]);
+    setCoverImage(safePlaceholderImage);
+    setGalleryImages([safePlaceholderImage]);
     setPdfUrl("");
 
     if (predefinedTemplates[catName]) {
@@ -109,7 +111,7 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
     setDescription(work.description || "");
     setCategoryId(work.categoryId ? String(work.categoryId) : "1");
     setPrice(work.price || "95 ريال");
-    setCoverImage(work.coverImage || "/images/portfolio-cover-1.jpg");
+    setCoverImage(work.coverImage || safePlaceholderImage);
     setGalleryImages(work.galleryImages || []);
     setPdfUrl(work.pdfUrl || "");
     setShowForm(true);
