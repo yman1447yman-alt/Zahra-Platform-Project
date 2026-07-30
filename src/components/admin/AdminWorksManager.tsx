@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Plus, 
   Trash2, 
@@ -22,7 +22,14 @@ interface AdminWorksManagerProps {
   onRefresh: () => void;
 }
 
-// القوالب الذكية للتعبئة التلقائية عند اختيار القسم
+const defaultCategoriesList = [
+  { id: 1, name: "ملفات الإنجاز" },
+  { id: 2, name: "الخطط التشغيلية" },
+  { id: 3, name: "أوراق العمل" },
+  { id: 4, name: "الاختبارات" },
+  { id: 5, name: "ملفات نافس" }
+];
+
 const predefinedTemplates: Record<string, { defaultTitle: string; defaultDescription: string }> = {
   "ملفات الإنجاز": {
     defaultTitle: "ملف إنجاز المعلم/المعلمة المتميز",
@@ -55,7 +62,6 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Form states
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -64,10 +70,19 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [pdfUrl, setPdfUrl] = useState("");
 
+  const safeCategories = Array.isArray(categories) && categories.length > 0 ? categories : defaultCategoriesList;
+  const safeWorks = Array.isArray(works) ? works : [];
+
+  useEffect(() => {
+    if (safeCategories.length > 0 && !categoryId) {
+      setCategoryId(String(safeCategories[0].id));
+    }
+  }, [safeCategories, categoryId]);
+
   const handleOpenNewForm = () => {
     setEditingWork(null);
-    const defaultCat = categories.length > 0 ? categories[0] : null;
-    const catId = defaultCat ? String(defaultCat.id) : "";
+    const defaultCat = safeCategories[0];
+    const catId = defaultCat ? String(defaultCat.id) : "1";
     const catName = defaultCat ? defaultCat.name : "ملفات الإنجاز";
     
     setCategoryId(catId);
@@ -76,7 +91,6 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
     setGalleryImages(["/images/portfolio-cover-1.jpg"]);
     setPdfUrl("");
 
-    // تطبيق التعبئة التلقائية الذكية عند الفتح
     if (predefinedTemplates[catName]) {
       setTitle(predefinedTemplates[catName].defaultTitle);
       setDescription(predefinedTemplates[catName].defaultDescription);
@@ -93,32 +107,20 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
     setEditingWork(work);
     setTitle(work.title || "");
     setDescription(work.description || "");
-    setCategoryId(work.categoryId ? String(work.categoryId) : "");
+    setCategoryId(work.categoryId ? String(work.categoryId) : "1");
     setPrice(work.price || "95 ريال");
     setCoverImage(work.coverImage || "/images/portfolio-cover-1.jpg");
-    
-    let parsedGallery = [];
-    try {
-      if (typeof work.galleryImages === "string") {
-        parsedGallery = JSON.parse(work.galleryImages);
-      } else if (Array.isArray(work.galleryImages)) {
-        parsedGallery = work.galleryImages;
-      }
-    } catch {
-      parsedGallery = [work.coverImage || "/images/portfolio-cover-1.jpg"];
-    }
-    setGalleryImages(parsedGallery);
+    setGalleryImages(work.galleryImages || []);
     setPdfUrl(work.pdfUrl || "");
     setShowForm(true);
     setMessage(null);
   };
 
-  // دالة تغيير التصنيف لتعبئة البيانات تلقائياً
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCatId = e.target.value;
     setCategoryId(newCatId);
 
-    const selectedCat = categories.find((c) => String(c.id) === String(newCatId));
+    const selectedCat = safeCategories.find((c) => String(c.id) === String(newCatId));
     if (selectedCat && predefinedTemplates[selectedCat.name]) {
       setTitle(predefinedTemplates[selectedCat.name].defaultTitle);
       setDescription(predefinedTemplates[selectedCat.name].defaultDescription);
@@ -170,12 +172,12 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
 
     setLoading(true);
     try {
-      const selectedCat = categories.find((c) => String(c.id) === String(categoryId));
+      const selectedCat = safeCategories.find((c) => String(c.id) === String(categoryId));
       const payload = {
         title,
         description,
-        categoryId: categoryId ? Number(categoryId) : undefined,
-        categoryName: selectedCat ? selectedCat.name : "ملفات إنجاز",
+        categoryId: categoryId ? Number(categoryId) : 1,
+        categoryName: selectedCat ? selectedCat.name : "ملفات الإنجاز",
         price,
         coverImage,
         galleryImages: galleryImages.length > 0 ? galleryImages : [coverImage],
@@ -225,11 +227,9 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
     }
   };
 
-  // فلترة آمنة تماماً تمنع خطأ الـ Prerender نهائياً
-  const safeWorks = Array.isArray(works) ? works : [];
   const filteredWorks = safeWorks.filter((w) => 
-    (w.title && w.title.toLowerCase().includes(searchTerm.toLowerCase())) || 
-    (w.categoryName && w.categoryName.toLowerCase().includes(searchTerm.toLowerCase()))
+    (w?.title?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
+    (w?.categoryName?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -248,7 +248,6 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
         </div>
       )}
 
-      {/* Action Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-7 rounded-3xl border border-[#E5E7EB] shadow-sm">
         <div>
           <h3 className="text-xl font-black text-[#1F2937] flex items-center gap-2.5">
@@ -256,7 +255,7 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
             <span>إدارة معرض الأعمال والنماذج الديناميكية</span>
           </h3>
           <p className="text-xs text-[#6B7280] mt-1 font-['Tajawal']">
-            جميع الأعمال التي تضيفها هنا تظهر فوراً داخل موقع منصة الزهراء مع أزرار المعاينة وطلب الواتساب التلقائي دون تعديل الكود.
+            جميع الأعمال التي تضيفها هنا تظهر فوراً داخل موقع منصة الزهراء مع أزرار المعاينة وطلب الواتساب التلقائي.
           </p>
         </div>
 
@@ -271,7 +270,6 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
         )}
       </div>
 
-      {/* Add / Edit Form Card */}
       {showForm && (
         <div className="bg-white text-[#1F2937] rounded-3xl p-7 sm:p-9 border-2 border-[#6C63FF] shadow-xl relative animate-fade-up">
           <div className="flex items-center justify-between pb-5 border-b border-[#E5E7EB] mb-7">
@@ -298,7 +296,7 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
                   onChange={handleCategoryChange}
                   className="w-full px-4 py-3.5 bg-[#F8F9FC] border border-[#E5E7EB] rounded-2xl text-[#1F2937] font-bold text-sm focus:outline-none focus:border-[#6C63FF] transition"
                 >
-                  {categories.map((cat) => (
+                  {safeCategories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
@@ -351,7 +349,6 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
               />
             </div>
 
-            {/* Upload Cover */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[#1F2937] flex items-center justify-between">
                 <span>صورة الغلاف (ارفع صورة أو ضع رابط) <span className="text-rose-600">*</span></span>
@@ -377,7 +374,6 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
               </div>
             </div>
 
-            {/* Additional gallery & PDF */}
             <div className="p-6 bg-[#F8F9FC] rounded-3xl border border-[#E5E7EB] space-y-5">
               <h5 className="font-extrabold text-[#1F2937] text-sm flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-[#6C63FF]" />
@@ -464,7 +460,6 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
         </div>
       )}
 
-      {/* Works List */}
       <div className="bg-white rounded-3xl border border-[#E5E7EB] overflow-hidden shadow-sm">
         <div className="p-6 border-b border-[#E5E7EB] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#F8F9FC]/80">
           <div className="relative w-full sm:w-80">
