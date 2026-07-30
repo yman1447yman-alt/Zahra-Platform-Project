@@ -97,7 +97,6 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
     setPrice(work.price || "95 ريال");
     setCoverImage(work.coverImage || "/images/portfolio-cover-1.jpg");
     
-    // التعامل الآمن مع galleryImages سواء كانت نص JSON أو مصفوفة
     let parsedGallery = [];
     try {
       if (typeof work.galleryImages === "string") {
@@ -226,7 +225,7 @@ export default function AdminWorksManager({ works = [], categories = [], onRefre
     }
   };
 
-  // فلترة آمنة تماماً تمنع أي خطأ بريمير (Prerender error)
+  // فلترة آمنة تماماً تمنع خطأ الـ Prerender نهائياً
   const safeWorks = Array.isArray(works) ? works : [];
   const filteredWorks = safeWorks.filter((w) => 
     (w.title && w.title.toLowerCase().includes(searchTerm.toLowerCase())) || 
