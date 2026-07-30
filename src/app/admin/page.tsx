@@ -22,7 +22,6 @@ interface AdminWorksManagerProps {
   onRefresh: () => void;
 }
 
-// القوالب الذكية للتعبئة التلقائية عند اختيار القسم
 const predefinedTemplates: Record<string, { defaultTitle: string; defaultDescription: string }> = {
   "ملفات الإنجاز": {
     defaultTitle: "ملف إنجاز المعلم/المعلمة المتميز",
@@ -46,7 +45,7 @@ const predefinedTemplates: Record<string, { defaultTitle: string; defaultDescrip
   }
 };
 
-export default function AdminWorksManager({ works, categories, onRefresh }: AdminWorksManagerProps) {
+export default function AdminWorksManager({ works = [], categories = [], onRefresh }: AdminWorksManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingWork, setEditingWork] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -55,7 +54,6 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Form states
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -64,9 +62,12 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [pdfUrl, setPdfUrl] = useState("");
 
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeWorks = Array.isArray(works) ? works : [];
+
   const handleOpenNewForm = () => {
     setEditingWork(null);
-    const defaultCat = categories.length > 0 ? categories[0] : null;
+    const defaultCat = safeCategories.length > 0 ? safeCategories[0] : null;
     const catId = defaultCat ? String(defaultCat.id) : "";
     const catName = defaultCat ? defaultCat.name : "ملفات الإنجاز";
     
@@ -76,7 +77,6 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
     setGalleryImages(["/images/portfolio-cover-1.jpg"]);
     setPdfUrl("");
 
-    // تطبيق التعبئة التلقائية الذكية عند الفتح
     if (predefinedTemplates[catName]) {
       setTitle(predefinedTemplates[catName].defaultTitle);
       setDescription(predefinedTemplates[catName].defaultDescription);
@@ -102,12 +102,11 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
     setMessage(null);
   };
 
-  // دالة تغيير التصنيف لتعبئة البيانات تلقائياً
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCatId = e.target.value;
     setCategoryId(newCatId);
 
-    const selectedCat = categories.find((c) => String(c.id) === String(newCatId));
+    const selectedCat = safeCategories.find((c) => String(c.id) === String(newCatId));
     if (selectedCat && predefinedTemplates[selectedCat.name]) {
       setTitle(predefinedTemplates[selectedCat.name].defaultTitle);
       setDescription(predefinedTemplates[selectedCat.name].defaultDescription);
@@ -159,7 +158,7 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
 
     setLoading(true);
     try {
-      const selectedCat = categories.find((c) => String(c.id) === String(categoryId));
+      const selectedCat = safeCategories.find((c) => String(c.id) === String(categoryId));
       const payload = {
         title,
         description,
@@ -214,9 +213,9 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
     }
   };
 
-  const filteredWorks = works.filter((w) => 
-    w.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    w.categoryName?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredWorks = safeWorks.filter((w) => 
+    (w?.title?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
+    (w?.categoryName?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -235,7 +234,6 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
         </div>
       )}
 
-      {/* Action Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-7 rounded-3xl border border-[#E5E7EB] shadow-sm">
         <div>
           <h3 className="text-xl font-black text-[#1F2937] flex items-center gap-2.5">
@@ -258,7 +256,6 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
         )}
       </div>
 
-      {/* Add / Edit Form Card */}
       {showForm && (
         <div className="bg-white text-[#1F2937] rounded-3xl p-7 sm:p-9 border-2 border-[#6C63FF] shadow-xl relative animate-fade-up">
           <div className="flex items-center justify-between pb-5 border-b border-[#E5E7EB] mb-7">
@@ -285,7 +282,7 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
                   onChange={handleCategoryChange}
                   className="w-full px-4 py-3.5 bg-[#F8F9FC] border border-[#E5E7EB] rounded-2xl text-[#1F2937] font-bold text-sm focus:outline-none focus:border-[#6C63FF] transition"
                 >
-                  {categories.map((cat) => (
+                  {safeCategories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
@@ -338,7 +335,6 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
               />
             </div>
 
-            {/* Upload Cover */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[#1F2937] flex items-center justify-between">
                 <span>صورة الغلاف (ارفع صورة أو ضع رابط) <span className="text-rose-600">*</span></span>
@@ -364,7 +360,6 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
               </div>
             </div>
 
-            {/* Additional gallery & PDF */}
             <div className="p-6 bg-[#F8F9FC] rounded-3xl border border-[#E5E7EB] space-y-5">
               <h5 className="font-extrabold text-[#1F2937] text-sm flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-[#6C63FF]" />
@@ -451,7 +446,6 @@ export default function AdminWorksManager({ works, categories, onRefresh }: Admi
         </div>
       )}
 
-      {/* Works List */}
       <div className="bg-white rounded-3xl border border-[#E5E7EB] overflow-hidden shadow-sm">
         <div className="p-6 border-b border-[#E5E7EB] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#F8F9FC]/80">
           <div className="relative w-full sm:w-80">
