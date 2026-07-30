@@ -38,7 +38,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const galleryJson = Array.isArray(galleryImages) ? JSON.stringify(galleryImages) : JSON.stringify([coverImage]);
+    // إرسال المصفوفة كما هي أو تمريرها بشكل يتوافق مع قاعدة البيانات
+    const finalGallery = Array.isArray(galleryImages) && galleryImages.length > 0 
+      ? galleryImages 
+      : [coverImage];
 
     const [newWork] = await db
       .insert(works)
@@ -47,9 +50,9 @@ export async function POST(request: Request) {
         description,
         categoryId: cid,
         categoryName: resolvedCategoryName,
-        price: price || "99 ريال",
+        price: price || "95 ريال",
         coverImage,
-        galleryImages: galleryJson,
+        galleryImages: finalGallery,
         pdfUrl: pdfUrl || null,
         isFeatured: Boolean(isFeatured),
         orderCount: 0,
@@ -57,8 +60,8 @@ export async function POST(request: Request) {
       .returning();
 
     return NextResponse.json({ success: true, work: newWork });
-  } catch (error) {
-    console.error("Error creating work:", error);
-    return NextResponse.json({ error: "فشل إنشاء النموذج في قاعدة البيانات." }, { status: 500 });
+  } catch (error: any) {
+    console.error("Error creating work details:", error);
+    return NextResponse.json({ error: `فشل إنشاء النموذج: ${error?.message || "خطأ غير معروف في السيرفر"}` }, { status: 500 });
   }
 }
